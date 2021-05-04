@@ -1,0 +1,3 @@
+[submodule "lib/pHash"]
+	path = lib/pHash
+	url = https://github.com/LaXiS96/pHash.git
