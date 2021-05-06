@@ -1,10 +1,6 @@
-#if defined(__STDC_NO_THREADS__)
-#error Support for C11 threads is required
-#endif
-
 #include <stdio.h>
 #include <stdlib.h>
-#include <threads.h>
+#include <pthread.h>
 #include <pHash_c.h>
 
 #include "queue.h"
@@ -13,9 +9,11 @@
 
 typedef struct
 {
-    int thrd_id;
+    int thread_id;
     queue_t *queue;
-} thrd_data_t;
+} thread_data_t;
+
+// TODO flag is needed when the queue is not fully populated before starting threads
 
 // int func(void *arg)
 // {
@@ -26,61 +24,59 @@ typedef struct
 //     printf("%d %.16lx\n", id, hash);
 // }
 
-// int producer(void *arg)
-// {
-//     queue_t *q = (queue_t *)arg;
-//     for (int i = 1; i < 50; i++)
-//     {
-//         printf("producer %d\n", i);
-//         queue_put(q, i);
-//     }
-//     thrd_exit(0);
-// }
-
-int consumer(void *arg)
+void *worker_func(void *arg)
 {
-    thrd_data_t *d = arg;
-    struct timespec delay;
+    thread_data_t *d = arg;
+    //struct timespec delay, watch1, watch2;
 
     while (1)
     {
         void *i;
         if (!queue_get(d->queue, &i))
-            thrd_exit(0);
+            break;
 
-        delay.tv_nsec = rand() % 100 * 10000000;
-        printf("consumer %d %d %d\n", d->thrd_id, delay.tv_nsec, i);
-        thrd_sleep(&delay, NULL);
+        printf("thread %d start\n", d->thread_id);
+        //clock_gettime(CLOCK_REALTIME, &watch1);
+
+        // uint64_t hash = 0;
+        // bool r = ph_c_dct_imagehash("sample.jpg", &hash);
+
+        uint8_t *hash;
+        bool r = ph_c_mh_imagehash("sample.jpg", 2.f, 1.f, &hash);
+
+        //clock_gettime(CLOCK_REALTIME, &watch2);
+        printf("thread %d end:%d\n", d->thread_id, r);
+
+        //printf("thread %d %.16lx %ld.%ld %ld.%ld\n", d->thread_id, hash, watch1.tv_sec, watch1.tv_nsec, watch2.tv_sec, watch2.tv_nsec);
+
+        // delay.tv_nsec = rand() % 100 * 10000000;
+        // printf("thread %d %d %d\n", d->thread_id, delay.tv_nsec, i);
+        //thrd_sleep(&delay, NULL);
     }
+
+    free(d);
 }
 
 int main(void)
 {
-    thrd_t threads[NUM_THREADS];
+    pthread_t threads[NUM_THREADS];
     queue_t *q = queue_init();
 
-    for (int i = 0; i < 128; i++)
+    printf("Hello there\n");
+
+    for (int i = 0; i < 32; i++)
         queue_put(q, i);
 
     for (int i = 0; i < NUM_THREADS; i++)
     {
-        thrd_data_t *d = malloc(sizeof(thrd_data_t));
-        d->thrd_id = i;
+        thread_data_t *d = malloc(sizeof(thread_data_t));
+        d->thread_id = i;
         d->queue = q;
-        thrd_create(&threads[i], consumer, d);
+        pthread_create(&threads[i], NULL, worker_func, d);
     }
 
     for (int i = 0; i < NUM_THREADS; i++)
-        thrd_join(threads[i], NULL);
-
-    // thrd_t prodThr, consThr;
-
-    // thrd_create(&prodThr, producer, q);
-    // thrd_create(&consThr, consumer, q);
-
-    // // TODO bad example, consumer starts too quickly and receives 0 (empty queue), so it exits
-    // thrd_join(prodThr, NULL);
-    // thrd_join(consThr, NULL);
+        pthread_join(threads[i], NULL);
 
     queue_destroy(q);
 
@@ -90,6 +86,8 @@ int main(void)
     //     printf("%.2x", mh_hash[i]);
     // printf("\n");
     // free(mh_hash);
+
+    printf("ffffffff\n");
 
     return 0;
 }

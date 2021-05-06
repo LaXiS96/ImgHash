@@ -1,24 +1,24 @@
 cmake_minimum_required(VERSION 3.16)
 project(ImgHash)
 
-set(CMAKE_C_STANDARD 11)
-set(CMAKE_C_STANDARD_REQUIRED ON)
+# set(CMAKE_C_STANDARD 99)
+# set(CMAKE_C_STANDARD_REQUIRED ON)
 # set(CMAKE_VERBOSE_MAKEFILE ON)
 
-set(PHASH_DYNAMIC OFF CACHE BOOL "Build pHash dynamic library")
-set(PHASH_STATIC ON CACHE BOOL "Build pHash dynamic library")
-add_subdirectory(lib/pHash)
-
+set(CMAKE_THREAD_PREFER_PTHREAD ON)
 set(THREADS_PREFER_PTHREAD_FLAG ON)
 find_package(Threads REQUIRED)
 
-include_directories(include)
+set(PHASH_DYNAMIC OFF CACHE BOOL "Build pHash dynamic library")
+set(PHASH_STATIC ON CACHE BOOL "Build pHash dynamic library")
+set(PHASH_C_BINDINGS ON CACHE BOOL "Include C bindings")
+add_subdirectory(lib/pHash)
 
 add_executable(ImgHash src/main.c)
-
-target_link_libraries(ImgHash
-                      PUBLIC pHash
-                      PUBLIC Threads::Threads)
-
 target_include_directories(ImgHash
-                           PUBLIC "${pHash_SOURCE_DIR}/bindings/c")
+    PRIVATE include
+)
+target_link_libraries(ImgHash
+    PRIVATE Threads::Threads
+    PRIVATE pHash
+)
